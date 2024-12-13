@@ -38,6 +38,7 @@ type StartFlags struct {
 }
 
 var startFlags StartFlags
+var asJson bool
 
 func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -63,7 +64,7 @@ already running.`,
 	cmd.Flags().StringVar(&startFlags.RelayerBinaryPath, "relayer-path", "", "use this relayer binary path")
 	cmd.Flags().StringVar(&startFlags.SnapshotName, "snapshot-name", constants.DefaultSnapshotName, "name of snapshot to use to start the network from")
 	cmd.Flags().Uint32Var(&startFlags.NumNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network")
-
+	cmd.Flags().BoolVarP(&asJson, "json", "j", false, "Print json serialized information")
 	return cmd
 }
 
@@ -281,10 +282,14 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	ux.Logger.PrintToUser("")
 
 	if printEndpoints {
-		if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, ""); err != nil {
+
+		if rpcURLs, nodes, err := localnet.GatherEndpoints(""); err != nil {
+			return err
+		} else if !asJson {
+			localnet.PrintEndpoints(ux.Logger.PrintToUser, &rpcURLs, &nodes)
+		} else if err = ux.Logger.PrintJSONToUser( map[string]interface{}{"rpc_urls": rpcURLs, "nodes": nodes}); err != nil{
 			return err
 		}
 	}
-
 	return nil
 }

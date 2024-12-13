@@ -3,6 +3,7 @@
 package ux
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -44,6 +45,16 @@ func (ul *UserLog) print(msg string) {
 	} else {
 		fmt.Print(msg)
 	}
+}
+
+// Print json serialized object to the user
+func (ul *UserLog) PrintJSONToUser(object interface{}) error {
+	jsonData, err := json.Marshal(object)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(jsonData))
+		return nil
 }
 
 // Info prints to the log file

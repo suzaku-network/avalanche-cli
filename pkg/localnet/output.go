@@ -4,12 +4,9 @@ package localnet
 
 import (
 	"fmt"
-	"sort"
 
-	"golang.org/x/exp/maps"
-
+	"github.com/ava-labs/avalanche-cli/pkg/models"
 	"github.com/ava-labs/avalanche-cli/pkg/utils"
-	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 )
@@ -17,42 +14,21 @@ import (
 // PrintLocalNetworkEndpoints prints the endpoints coming from the status call
 func PrintEndpoints(
 	printFunc func(msg string, args ...interface{}),
-	subnetName string,
-) error {
-	clusterInfo, err := GetClusterInfo()
-	if err != nil {
-		return err
-	}
-	for _, chainInfo := range clusterInfo.CustomChains {
-		if subnetName == "" || chainInfo.ChainName == subnetName {
-			if err := PrintSubnetEndpoints(printFunc, clusterInfo, chainInfo); err != nil {
-				return err
-			}
+	rpcURLs *[]models.RPCURL, 
+	nodes *[]models.Node,
+) {
+	for _, rpcurl := range *rpcURLs {
+		PrintSubnetEndpoints(printFunc, rpcurl)
 			printFunc("")
-		}
 	}
-	if err := PrintNetworkEndpoints(printFunc, clusterInfo); err != nil {
-		return err
-	}
-	return nil
+	PrintNetworkEndpoints(printFunc, *nodes)
 }
 
 func PrintSubnetEndpoints(
 	printFunc func(msg string, args ...interface{}),
-	clusterInfo *rpcpb.ClusterInfo,
-	chainInfo *rpcpb.CustomChainInfo,
-) error {
-	nodeInfos := maps.Values(clusterInfo.NodeInfos)
-	nodeUris := utils.Map(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) string { return nodeInfo.GetUri() })
-	if len(nodeUris) == 0 {
-		return fmt.Errorf("network has no nodes")
-	}
-	sort.Strings(nodeUris)
-	refNodeURI := nodeUris[0]
-	nodeInfo := utils.Find(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) bool { return nodeInfo.GetUri() == refNodeURI })
-	if nodeInfo == nil {
-		return fmt.Errorf("unexpected nil nodeInfo")
-	}
+	rpcurl models.RPCURL,
+) {
+	
 	t := table.NewWriter()
 	t.Style().Title.Align = text.AlignCenter
 	t.Style().Title.Format = text.FormatUpper
@@ -60,25 +36,18 @@ func PrintSubnetEndpoints(
 	t.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AutoMerge: true},
 	})
-	t.SetTitle(fmt.Sprintf("%s RPC URLs", chainInfo.ChainName))
-	blockchainIDURL := fmt.Sprintf("%s/ext/bc/%s/rpc", (*nodeInfo).GetUri(), chainInfo.ChainId)
-	t.AppendRow(table.Row{"Localhost", blockchainIDURL})
-	if utils.InsideCodespace() {
-		var err error
-		blockchainIDURL, err = utils.GetCodespaceURL(blockchainIDURL)
-		if err != nil {
-			return err
-		}
-		t.AppendRow(table.Row{"Codespace", blockchainIDURL})
+	t.SetTitle(fmt.Sprintf("%s RPC URLs", rpcurl.Name))
+	t.AppendRow(table.Row{"Localhost", rpcurl.URL})
+	if rpcurl.CodespaceURL != "" {
+		t.AppendRow(table.Row{"Codespace", rpcurl.CodespaceURL})
 	}
 	printFunc(t.Render())
-	return nil
 }
 
 func PrintNetworkEndpoints(
 	printFunc func(msg string, args ...interface{}),
-	clusterInfo *rpcpb.ClusterInfo,
-) error {
+	nodes []models.Node,
+) {
 	t := table.NewWriter()
 	t.Style().Title.Align = text.AlignCenter
 	t.Style().Title.Format = text.FormatUpper
@@ -90,26 +59,12 @@ func PrintNetworkEndpoints(
 		header = append(header, "Codespace Endpoint")
 	}
 	t.AppendHeader(header)
-	nodeNames := clusterInfo.NodeNames
-	sort.Strings(nodeNames)
-	nodeInfos := map[string]*rpcpb.NodeInfo{}
-	for _, nodeInfo := range clusterInfo.NodeInfos {
-		nodeInfos[nodeInfo.Name] = nodeInfo
-	}
-	var err error
-	for _, nodeName := range nodeNames {
-		nodeInfo := nodeInfos[nodeName]
-		nodeURL := nodeInfo.GetUri()
-		row := table.Row{nodeInfo.Name, nodeInfo.Id, nodeURL}
+	for _, node := range nodes {
+		row := table.Row{node.Name, node.NodeID, node.URL}
 		if insideCodespace {
-			nodeURL, err = utils.GetCodespaceURL(nodeURL)
-			if err != nil {
-				return err
-			}
-			row = append(row, nodeURL)
+			row = append(row, node.CodespaceURL)
 		}
 		t.AppendRow(row)
 	}
 	printFunc(t.Render())
-	return nil
 }

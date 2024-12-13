@@ -54,6 +54,8 @@ var (
 	avalanchegoChainConfigDir        string
 
 	print bool
+
+	asJson bool
 )
 
 // avalanche blockchain upgrade apply
@@ -84,6 +86,7 @@ Refer to https://docs.avax.network/nodes/maintain/chain-config-flags#subnet-chai
 	cmd.Flags().BoolVar(&print, "print", false, "if true, print the manual config without prompting (for public networks only)")
 	cmd.Flags().BoolVar(&force, "force", false, "If true, don't prompt for confirmation of timestamps in the past")
 	cmd.Flags().StringVar(&avalanchegoChainConfigDir, avalanchegoChainConfigFlag, os.ExpandEnv(avalanchegoChainConfigDirDefault), "avalanchego's chain config file directory")
+	cmd.Flags().BoolVarP(&asJson, "json", "j", false, "Print json serialized information")
 
 	return cmd
 }
@@ -224,7 +227,11 @@ func applyLocalNetworkUpgrade(blockchainName, networkKey string, sc *models.Side
 		}
 		ux.Logger.PrintToUser("The next upgrade will go into effect %s", time.Unix(nextUpgrade, 0).Local().Format(constants.TimeParseLayout))
 		ux.Logger.PrintToUser("")
-		if err := localnet.PrintEndpoints(ux.Logger.PrintToUser, blockchainName); err != nil {
+		if rpcURLs, nodes, err := localnet.GatherEndpoints(blockchainName); err != nil {
+			return err
+		} else if !asJson {
+			localnet.PrintEndpoints(ux.Logger.PrintToUser, &rpcURLs, &nodes)
+		} else if err = ux.Logger.PrintJSONToUser( map[string]interface{}{"rpc_urls": rpcURLs, "nodes": nodes}); err != nil{
 			return err
 		}
 

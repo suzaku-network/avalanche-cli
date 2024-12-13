@@ -204,6 +204,7 @@ so you can take your locally tested Subnet and deploy it on Fuji or Mainnet.`,
 
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 	cmd.Flags().Uint32Var(&numNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network deploy")
+	cmd.Flags().BoolVarP(&asJson, "json", "j", false, "Print json serialized information")
 	return cmd
 }
 
@@ -1159,7 +1160,13 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 
 	if network.Kind == models.Local && !simulatedPublicNetwork() {
 		ux.Logger.PrintToUser("")
-		return PrintSubnetInfo(blockchainName, true)
+		if subnetInfo, err := GatherSubnetInfo(blockchainName, true); err != nil {
+			return err
+		} else if asJson {
+			PrintSubnetInfo(&subnetInfo)
+		} else if err = ux.Logger.PrintJSONToUser(subnetInfo); err != nil{
+			return err
+		}
 	}
 
 	return nil
