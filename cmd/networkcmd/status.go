@@ -11,7 +11,7 @@ import (
 )
 
 func newStatusCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "status",
 		Short: "Prints the status of the local network",
 		Long: `The network status command prints whether or not a local Avalanche
@@ -20,9 +20,12 @@ network is running and some basic stats about the network.`,
 		RunE: networkStatus,
 		Args: cobrautils.ExactArgs(0),
 	}
+	cmd.Flags().BoolVarP(&AsJson, "json", "j", false, "Print the output in JSON format")
+	return cmd
 }
 
 func networkStatus(*cobra.Command, []string) error {
+	ux.Table.SetAsJson(&AsJson)
 	clusterInfo, err := localnet.GetClusterInfo()
 	if err != nil {
 		if server.IsServerError(err, server.ErrNotBootstrapped) {
@@ -38,7 +41,7 @@ func networkStatus(*cobra.Command, []string) error {
 		ux.Logger.PrintToUser("  Network Healthy: %t", clusterInfo.Healthy)
 		ux.Logger.PrintToUser("  Custom VMs Healthy: %t", clusterInfo.CustomChainsHealthy)
 		ux.Logger.PrintToUser("")
-		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, ""); err != nil {
+		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, "", AsJson); err != nil {
 			return err
 		}
 	} else {
@@ -47,6 +50,6 @@ func networkStatus(*cobra.Command, []string) error {
 
 	// TODO: verbose output?
 	// ux.Logger.PrintToUser(status.String())
-
+	ux.Table.PrintIfJson()
 	return nil
 }

@@ -31,17 +31,20 @@ func TimedProgressBar(
 			BarEnd:        "]",
 		}))
 	for i := 0; i < steps; i++ {
-		if err := bar.Add(1); err != nil {
+		if err := ExtraStepExecuted(bar); err != nil {
 			return nil, err
 		}
 		time.Sleep(stepDuration)
 	}
-	if extraSteps == 0 {
+	if extraSteps == 0 && !*Logger.muted{
 		fmt.Println()
 	}
 	return bar, nil
 }
 
 func ExtraStepExecuted(bar *progressbar.ProgressBar) error {
+	if Logger != nil && *Logger.muted {
+		return nil
+	}
 	return bar.Add(1)
 }

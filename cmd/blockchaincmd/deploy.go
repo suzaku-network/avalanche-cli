@@ -99,6 +99,7 @@ var (
 	icmKeyName                      string
 	cchainIcmKeyName                string
 	relayerAllowPrivateIPs          bool
+	overwriteL1										 	bool
 
 	poSMinimumStakeAmount     uint64
 	poSMaximumStakeAmount     uint64
@@ -219,6 +220,8 @@ so you can take your locally tested Blockchain and deploy it on Fuji or Mainnet.
 
 	cmd.Flags().BoolVar(&partialSync, "partial-sync", true, "set primary network partial sync for new validators")
 	cmd.Flags().Uint32Var(&numNodes, "num-nodes", constants.LocalNetworkNumNodes, "number of nodes to be created on local network deploy")
+	cmd.Flags().BoolVarP(&overwriteL1, "overwrite", "o", false, "Overwrite the current local L1 deploy")
+	cmd.Flags().BoolVarP(&AsJson, "json", "j", false, "Print the output in JSON format")
 	return cmd
 }
 
@@ -397,6 +400,7 @@ func getSubnetEVMMainnetChainID(sc *models.Sidecar, blockchainName string) error
 
 // deployBlockchain is the cobra command run for deploying subnets
 func deployBlockchain(cmd *cobra.Command, args []string) error {
+	ux.Table.SetAsJson(&AsJson)
 	blockchainName := args[0]
 
 	if err := CreateBlockchainFirst(cmd, blockchainName, skipCreatePrompt); err != nil {
@@ -658,14 +662,16 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 						blockchainName,
 						network.Name(),
 					)
-					yes, err := app.Prompt.CaptureNoYes(
-						fmt.Sprintf("Do you want to overwrite the current local L1 deploy for %s?", blockchainName),
-					)
-					if err != nil {
-						return err
-					}
-					if !yes {
-						return nil
+					if !overwriteL1 {
+						yes, err := app.Prompt.CaptureNoYes(
+							fmt.Sprintf("Do you want to overwrite the current local L1 deploy for %s?", blockchainName),
+						)
+						if err != nil {
+							return err
+						}
+						if !yes {
+							return nil
+						}
 					}
 					_ = node.DestroyLocalNode(app, clusterName)
 				}
@@ -1252,7 +1258,7 @@ func deployBlockchain(cmd *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("To deploy a local relayer later on, call `avalanche interchain relayer deploy`")
 		ux.Logger.PrintToUser("This does not affect L1 operations besides Interchain Messaging")
 	}
-
+	ux.Table.PrintIfJson()
 	return nil
 }
 

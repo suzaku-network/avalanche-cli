@@ -53,7 +53,8 @@ var (
 	avalanchegoChainConfigFlag       = "avalanchego-chain-config-dir"
 	avalanchegoChainConfigDir        string
 
-	print bool
+	print  bool
+	AsJson bool
 )
 
 // avalanche blockchain upgrade apply
@@ -84,11 +85,13 @@ Refer to https://docs.avax.network/nodes/maintain/chain-config-flags#subnet-chai
 	cmd.Flags().BoolVar(&print, "print", false, "if true, print the manual config without prompting (for public networks only)")
 	cmd.Flags().BoolVar(&force, "force", false, "If true, don't prompt for confirmation of timestamps in the past")
 	cmd.Flags().StringVar(&avalanchegoChainConfigDir, avalanchegoChainConfigFlag, os.ExpandEnv(avalanchegoChainConfigDirDefault), "avalanchego's chain config file directory")
+	cmd.Flags().BoolVarP(&AsJson, "json", "j", false, "Print the output in JSON format")
 
 	return cmd
 }
 
 func applyCmd(_ *cobra.Command, args []string) error {
+	ux.Table.SetAsJson(&AsJson)
 	blockchainName := args[0]
 
 	if !app.BlockchainConfigExists(blockchainName) {
@@ -114,7 +117,7 @@ func applyCmd(_ *cobra.Command, args []string) error {
 	case mainnetDeployment:
 		return applyPublicNetworkUpgrade(blockchainName, models.Mainnet.String(), &sc)
 	}
-
+	ux.Table.PrintIfJson()
 	return nil
 }
 
@@ -224,7 +227,7 @@ func applyLocalNetworkUpgrade(blockchainName, networkKey string, sc *models.Side
 		}
 		ux.Logger.PrintToUser("The next upgrade will go into effect %s", time.Unix(nextUpgrade, 0).Local().Format(constants.TimeParseLayout))
 		ux.Logger.PrintToUser("")
-		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, blockchainName); err != nil {
+		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, blockchainName, AsJson); err != nil {
 			return err
 		}
 

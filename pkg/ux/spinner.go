@@ -44,10 +44,13 @@ func (us *UserSpinner) Stop() {
 
 func (us *UserSpinner) SpinToUser(msg string, args ...interface{}) *ysmrr.Spinner {
 	formattedMsg := fmt.Sprintf(msg, args...)
-	if Logger != nil {
+	if Logger != nil{
 		Logger.log.Info(formattedMsg + " [Spinner Start]")
 	}
 	sp := us.spinner.AddSpinner(formattedMsg)
+	if Logger != nil && *Logger.muted {
+		return sp
+	}
 	us.mutex.Lock()
 	if !us.started {
 		us.spinner.Start()
@@ -68,7 +71,9 @@ func SpinFailWithError(s *ysmrr.Spinner, txt string, err error) {
 }
 
 func SpinComplete(s *ysmrr.Spinner) {
-	ansi.CursorShow()
+	if Logger != nil && !*Logger.muted {
+		ansi.CursorShow()
+	}
 	if s.IsComplete() {
 		return
 	}

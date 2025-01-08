@@ -22,6 +22,7 @@ func PrintEndpoints(
 	app *application.Avalanche,
 	printFunc func(msg string, args ...interface{}),
 	subnetName string,
+	AsJson bool,
 ) error {
 	clusterInfo, err := GetClusterInfo()
 	if err != nil {
@@ -29,19 +30,19 @@ func PrintEndpoints(
 	}
 	for _, chainInfo := range clusterInfo.CustomChains {
 		if subnetName == "" || chainInfo.ChainName == subnetName {
-			if err := PrintSubnetEndpoints(app, printFunc, clusterInfo, chainInfo); err != nil {
+			if err := PrintSubnetEndpoints(app, printFunc, clusterInfo, chainInfo, AsJson); err != nil {
 				return err
 			}
 			printFunc("")
 		}
 	}
-	if err := PrintNetworkEndpoints("Primary Nodes", printFunc, clusterInfo); err != nil {
+	if err := PrintNetworkEndpoints("Primary Nodes", printFunc, clusterInfo, AsJson); err != nil {
 		return err
 	}
 	clusterInfo, err = GetClusterInfoWithEndpoint(binutils.LocalClusterGRPCServerEndpoint)
 	if err == nil {
 		printFunc("")
-		if err := PrintNetworkEndpoints("L1 Nodes", printFunc, clusterInfo); err != nil {
+		if err := PrintNetworkEndpoints("L1 Nodes", printFunc, clusterInfo, AsJson); err != nil {
 			return err
 		}
 	}
@@ -53,6 +54,7 @@ func PrintSubnetEndpoints(
 	printFunc func(msg string, args ...interface{}),
 	clusterInfo *rpcpb.ClusterInfo,
 	chainInfo *rpcpb.CustomChainInfo,
+	AsJson bool,
 ) error {
 	nodeInfos := maps.Values(clusterInfo.NodeInfos)
 	nodeUris := utils.Map(nodeInfos, func(nodeInfo *rpcpb.NodeInfo) string { return nodeInfo.GetUri() })
@@ -94,6 +96,7 @@ func PrintNetworkEndpoints(
 	title string,
 	printFunc func(msg string, args ...interface{}),
 	clusterInfo *rpcpb.ClusterInfo,
+	AsJson bool,
 ) error {
 	header := table.Row{"Name", "Node ID", "Localhost Endpoint"}
 	insideCodespace := utils.InsideCodespace()

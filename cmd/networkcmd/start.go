@@ -41,6 +41,7 @@ type StartFlags struct {
 }
 
 var startFlags StartFlags
+var AsJson bool
 
 func newStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -72,11 +73,13 @@ already running.`,
 		constants.LatestPreReleaseVersionTag,
 		"use this relayer version",
 	)
+	cmd.Flags().BoolVarP(&AsJson, "json", "j", false, "Print the output in JSON format")
 
 	return cmd
 }
 
 func start(*cobra.Command, []string) error {
+	ux.Table.SetAsJson(&AsJson)
 	return Start(startFlags, true)
 }
 
@@ -298,11 +301,11 @@ func Start(flags StartFlags, printEndpoints bool) error {
 	ux.Logger.PrintToUser("")
 
 	if printEndpoints {
-		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, ""); err != nil {
+		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, "", AsJson); err != nil {
 			return err
 		}
 	}
-
+	ux.Table.PrintIfJson()
 	return nil
 }
 
