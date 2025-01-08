@@ -11,6 +11,7 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 
+	// "github.com/ava-labs/avalanche-network-runner/network/node/status"
 	"github.com/ava-labs/avalanchego/utils/logging"
 	"github.com/fatih/color"
 )
@@ -20,27 +21,48 @@ var Logger *UserLog
 type UserLog struct {
 	log    logging.Logger
 	Writer io.Writer
+	muted *bool
+	oneShotUnmute bool
 }
 
 func NewUserLog(log logging.Logger, userwriter io.Writer) {
 	if Logger == nil {
+		muted := false
 		Logger = &UserLog{
 			log:    log,
 			Writer: userwriter,
+			muted: &muted,
+			oneShotUnmute: false,
 		}
 	}
 }
 
+// Mute the user log
+func (ul *UserLog) SetMute(status *bool) {
+	ul.muted = status
+}
+
+func (ul *UserLog) OneShotUnmute() {
+	ul.oneShotUnmute = true
+}
+
 // PrintToUser prints msg directly on the screen, but also to log file
 func (ul *UserLog) PrintToUser(msg string, args ...interface{}) {
-	fmt.Print("\r\033[K") // Clear the line from the cursor position to the end
+	if !*ul.muted {fmt.Print("\r\033[K")} // Clear the line from the cursor position to the end
 	ul.print(fmt.Sprintf(msg, args...) + "\n")
 }
 
 func (ul *UserLog) print(msg string) {
 	if ul != nil {
-		fmt.Fprint(ul.Writer, msg)
 		ul.log.Info(msg)
+		if *ul.muted {
+			if ul.oneShotUnmute {
+				ul.oneShotUnmute = false
+			} else {
+				return
+			}
+		}
+		fmt.Fprint(ul.Writer, msg)
 	} else {
 		fmt.Print(msg)
 	}

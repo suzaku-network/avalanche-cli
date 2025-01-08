@@ -25,6 +25,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var AsJson bool
+
 func NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [blockchainName]",
@@ -35,10 +37,12 @@ func NewListCmd() *cobra.Command {
 	}
 
 	networkoptions.AddNetworkFlagsToCmd(cmd, &globalNetworkFlags, true, getBalanceSupportedNetworkOptions)
+	cmd.Flags().BoolVarP(&AsJson, "json", "j", false, "Print the output in JSON format")
 	return cmd
 }
 
 func list(_ *cobra.Command, args []string) error {
+	ux.Table.SetAsJson(&AsJson)
 	blockchainName := args[0]
 	sc, err := app.LoadSidecar(blockchainName)
 	if err != nil {
@@ -119,5 +123,6 @@ func list(_ *cobra.Command, args []string) error {
 		t.AppendRow(table.Row{nodeID, validationID, validator.Weight, float64(balance) / float64(units.Avax)})
 	}
 	fmt.Println(t.Render())
+	ux.Table.PrintIfJson()
 	return nil
 }

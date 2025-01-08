@@ -41,6 +41,7 @@ import (
 )
 
 var printGenesisOnly bool
+var AsJson bool
 
 // avalanche blockchain describe
 func newDescribeCmd() *cobra.Command {
@@ -60,6 +61,7 @@ flag, the command instead prints out the raw genesis file.`,
 		false,
 		"Print the genesis to the console directly instead of the summary",
 	)
+	cmd.Flags().BoolVarP(&AsJson, "json", "j", false, "Print the output in JSON format")
 	return cmd
 }
 
@@ -233,7 +235,7 @@ func PrintSubnetInfo(blockchainName string, onlyLocalnetInfo bool) error {
 
 	if locallyDeployed {
 		ux.Logger.PrintToUser("")
-		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, sc.Name); err != nil {
+		if err := localnet.PrintEndpoints(app, ux.Logger.PrintToUser, sc.Name, AsJson); err != nil {
 			return err
 		}
 
@@ -423,7 +425,7 @@ func printPrecompiles(genesis core.Genesis) {
 }
 
 func addPrecompileAllowListToTable(
-	t table.Writer,
+	t ux.CustomTable,
 	label string,
 	adminAddresses []common.Address,
 	managerAddresses []common.Address,
@@ -450,6 +452,7 @@ func addPrecompileAllowListToTable(
 }
 
 func describe(_ *cobra.Command, args []string) error {
+	ux.Table.SetAsJson(&AsJson)
 	blockchainName := args[0]
 	if !app.GenesisExists(blockchainName) {
 		ux.Logger.PrintToUser("The provided blockchain name %q does not exist", blockchainName)
@@ -473,5 +476,6 @@ func describe(_ *cobra.Command, args []string) error {
 		ux.Logger.PrintToUser("Printing genesis")
 		return printGenesis(blockchainName)
 	}
+	ux.Table.PrintIfJson()
 	return nil
 }

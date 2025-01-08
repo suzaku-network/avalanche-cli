@@ -54,6 +54,7 @@ var (
 )
 
 func NewRootCmd() *cobra.Command {
+	persistentPreRunE, initLogger := createAppClosure()
 	// rootCmd represents the base command when called without any subcommands
 	rootCmd := &cobra.Command{
 		Use: "avalanche",
@@ -63,7 +64,7 @@ build and test Blockchain networks.
 
 To get started, look at the documentation for the subcommands or jump right
 in with avalanche blockchain create myNewBlockchain.`,
-		PersistentPreRunE: createApp,
+		PersistentPreRunE: persistentPreRunE,
 		Version:           Version,
 		PersistentPostRun: handleTracking,
 		SilenceErrors:     true,
@@ -79,6 +80,8 @@ in with avalanche blockchain create myNewBlockchain.`,
 		StringVar(&logLevel, "log-level", "ERROR", "log level for the application")
 	rootCmd.PersistentFlags().
 		BoolVar(&skipCheck, constants.SkipUpdateFlag, false, "skip check for new versions")
+
+	initLogger()
 
 	// add sub commands
 	rootCmd.AddCommand(blockchaincmd.NewCmd(app))
@@ -131,15 +134,24 @@ in with avalanche blockchain create myNewBlockchain.`,
 	return rootCmd
 }
 
-func createApp(cmd *cobra.Command, _ []string) error {
-	baseDir, err := setupEnv()
-	if err != nil {
-		return err
-	}
-	log, err := setupLogging(baseDir)
-	if err != nil {
-		return err
-	}
+// createAppClosure returns createApp as persistentPreRunE for cobra and a function that initializes the logger to be called after rootCmd creation and logLevel assignment but before the call to createApp and sub command creation
+func createAppClosure() (func(cmd *cobra.Command, _ []string) error, func()) {
+	baseDir, errEnv := setupEnv()
+	// we need to store the logger in this scope to be able to use it in the createApp function
+	var (log logging.Logger; errLog error)
+
+	return func(cmd *cobra.Command, args []string) error {
+		if errEnv != nil {
+			return errEnv
+		}
+		if errLog != nil {
+			return errLog
+		}
+		return createApp(cmd, log, baseDir)
+	}, func(){log, errLog = setupLogging(baseDir)}
+}
+
+func createApp(cmd *cobra.Command, log logging.Logger, baseDir string) error {
 	log.Info("-----------")
 	log.Info(fmt.Sprintf("cmd: %s", strings.Join(os.Args[1:], " ")))
 	cf := config.New()
@@ -351,6 +363,8 @@ func setupLogging(baseDir string) (logging.Logger, error) {
 	}
 	// create the user facing logger as a global var
 	ux.NewUserLog(log, os.Stdout)
+	// create table singleton for the sub commands as it use flag for json output
+	ux.NewCustomTable("", nil)
 	return log, nil
 }
 
